@@ -17,5 +17,7 @@ if __name__ == "__main__":
     # for business_day in business_days(the_start_date, the_end_date):
     #     print(business_day)
 
-    start_rates_api()
+    # start_rates_api()
+
+    print("some client app")
 
