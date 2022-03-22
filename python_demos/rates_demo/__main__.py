@@ -1,23 +1,15 @@
 """ rates demo main """
 
-# from datetime import date
-# from rates_demo.dates_demo import run_demo
-# from .dates_demo import run_demo
-# from .business_days import business_days
-from rates_demo.rates_api import start_rates_api
+from datetime import date, timedelta
 
+from rates_demo.get_rates import get_rates
 
 
 if __name__ == "__main__":
-    #run_demo()
 
-    # the_start_date = date(2020, 12, 15)
-    # the_end_date = date(2021, 1, 14)
+    start_date = date(2021, 1, 1)
+    end_date = start_date + timedelta(days=19)
 
-    # for business_day in business_days(the_start_date, the_end_date):
-    #     print(business_day)
+    rates = get_rates(start_date, end_date)
 
-    # start_rates_api()
-
-    print("some client app")
-
+    print("\n".join(rates))
