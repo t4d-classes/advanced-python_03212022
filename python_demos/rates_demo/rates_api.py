@@ -18,7 +18,7 @@ def check() -> Response:
     return "READY"
 
 """
-URL: http://127.0.0.1:5000/api/2021-04-08?base=INR&symbols=USD,EUR
+URL: http://127.0.0.1:5050/api/2021-04-08?base=INR&symbols=USD,EUR
 {
     "date": "2021-04-08",
     "base": "INR",
@@ -73,7 +73,7 @@ def start_rates_api() -> None:
 
     rates = load_rates_from_history(rates_file_path)
     
-    app.run()
+    app.run(port=5050)
 
 
 if __name__ == "__main__":

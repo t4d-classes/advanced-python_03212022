@@ -20,7 +20,7 @@ def rates_api_server() -> Generator[None,None,None]:
     while True:
 
         try:
-            requests.get("http://127.0.0.1:5000/check")
+            requests.get("http://127.0.0.1:5050/check")
             break
         except ConnectionError:
             continue

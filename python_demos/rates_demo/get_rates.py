@@ -17,7 +17,7 @@ def get_rates(start_date: date, end_date: date) -> list[str]:
     for business_day in business_days(start_date, end_date):
 
         rate_url = "".join([
-            "http://127.0.0.1:5000/api/",
+            "http://127.0.0.1:5050/api/",
             str(business_day),
             "?base=INR&symbols=",
             ",".join(currency_symbols)
@@ -35,7 +35,7 @@ def get_rate_task(business_day: date) -> str:
     currency_symbols = ['USD', 'CAD', 'GBP']
 
     rate_url = "".join([
-        "http://127.0.0.1:5000/api/",
+        "http://127.0.0.1:5050/api/",
         str(business_day),
         "?base=INR&symbols=",
         ",".join(currency_symbols)
