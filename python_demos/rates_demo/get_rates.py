@@ -23,6 +23,7 @@ def get_rates(start_date: date, end_date: date) -> list[str]:
         ])
 
         response = requests.get(rate_url)
+        print(response.status_code)
         rate_responses.append(response.text)
 
     return rate_responses
