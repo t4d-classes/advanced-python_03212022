@@ -1,4 +1,5 @@
 """ rate server module """
+
 from typing import Optional
 import multiprocessing as mp
 import sys
@@ -6,6 +7,18 @@ import sys
 
 def rate_server() -> None:
     """rate server"""
+
+    # implement socket server
+    # the host and port should be received as parameters into this function
+
+    # - use "AF_INET" for IPv4
+    # - use "SOCK_STREAM" for TCP
+
+    # when a client connects, send the following string:
+    #     "Connected to the Rate Server"
+
+    # wire up an echo server which receives a string and echos back to
+    # the client the string that is received
 
     while True:
         pass
@@ -37,19 +50,20 @@ def command_stop_server(
     server_process = None
 
     return server_process
-
+    
 
 def command_server_status(server_process: Optional[mp.Process]) -> None:
-    """ command server status """
+    """ output the status of the server """
 
+    # typeguard
     if server_process and server_process.is_alive():
         print("server is running")
     else:
         print("server is stopped")
 
-
 def command_exit(server_process: Optional[mp.Process]) -> None:
-    """ command exit """
+    """ exit the rates server app """
+
     if server_process and server_process.is_alive():
         server_process.terminate()
 
@@ -60,6 +74,10 @@ def main() -> None:
     try:
 
         server_process: Optional[mp.Process] = None
+
+        # define the host and port variables here
+        # host: 127.0.0.1
+        # port: 5050
 
         while True:
 
