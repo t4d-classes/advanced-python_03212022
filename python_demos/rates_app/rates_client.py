@@ -1,28 +1,38 @@
 """ rate client module """
 import sys
+import socket
 
-try:
+def main(host: str, port: int) -> None:
+    """ main """
 
-    # implement socket client
+    try:
 
-    # - use "AF_INET" for IPv4
-    # - use "SOCK_STREAM" for TCP
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_client:
 
-    # connect to localhost and port 5050 using the context manager
+            socket_client.connect( (host, port) )
 
-    # print the welcome message from the server
+            welcome_message = socket_client.recv(2048)
 
-    # display a command prompt, allow the user to enter text
+            print(welcome_message.decode('UTF-8'))
 
-    # send the user entered text to the server, then receive the response
-    # and output the response to the console
+            while True:
 
-    pass
+                command = input("> ")
 
-except ConnectionResetError:
-    print("Server connection was closed.")
+                if command == "exit":
+                    break
+                else:
+                    socket_client.sendall(command.encode("UTF-8"))
+                    print(socket_client.recv(2048).decode("UTF-8"))
 
-except KeyboardInterrupt:
-    pass
+    except ConnectionResetError:
+        print("Server connection was closed.")
 
-sys.exit(0)
+    except KeyboardInterrupt:
+        pass
+
+    sys.exit(0)
+
+if __name__ == "__main__":
+    # read config then call main
+    main('127.0.0.1', 5050)
