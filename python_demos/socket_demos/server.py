@@ -21,5 +21,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_server:
     while True:
 
         message = conn.recv(2048).decode('UTF-8')
+
+        if not message:
+            break
+        
         print("recv: " + message)
         conn.sendall(message.encode('UTF-8'))
