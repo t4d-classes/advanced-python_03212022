@@ -4,6 +4,7 @@ from typing import Optional
 import multiprocessing as mp
 import sys
 import socket
+import threading
 
 # Create "ClientConnectionThread" class that inherits from "Thread"
 
@@ -12,6 +13,29 @@ import socket
 # welcome message and interacting with the client, echoing messages
 
 # The server should support multiple clients at the same time
+
+class ClientConnectionThread(threading.Thread):
+    """ client connection thread """
+
+    def __init__(self, conn: socket.socket):
+        threading.Thread.__init__(self)
+        self.conn = conn
+
+    def run(self) -> None:
+
+        self.conn.sendall(b"Connected to the Rate Server!")
+
+        while True:
+
+            message = self.conn.recv(2048).decode('UTF-8')
+
+            if not message:
+                break
+         
+            print("recv: " + message)
+            self.conn.sendall(message.encode('UTF-8'))
+
+
 
 
 def rate_server(host: str, port: int) -> None:
@@ -25,22 +49,13 @@ def rate_server(host: str, port: int) -> None:
 
         print(f"server is listening on {host}:{port}")
 
-        # blocking call waiting for a client to connect
-        conn, addr = socket_server.accept()
-
-        print(f"client at {addr[0]}:{addr[1]} connected")
-
-        conn.sendall(f"Welcome to {host}:{port}!".encode('UTF-8'))
-
         while True:
 
-            message = conn.recv(2048).decode('UTF-8')
+            # blocking call waiting for a client to connect
+            conn, _ = socket_server.accept()
 
-            if not message:
-                break
-            
-            print("recv: " + message)
-            conn.sendall(message.encode('UTF-8'))
+            client_con_thread = ClientConnectionThread(conn)
+            client_con_thread.start()
 
 
 def command_start_server(
