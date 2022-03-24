@@ -14,6 +14,7 @@ def do_it() -> None:
 
     with counter_lock:
         x = counter
+        time.sleep(1)
         x = x - 1
         counter = x
 
