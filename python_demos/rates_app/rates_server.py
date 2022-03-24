@@ -1,11 +1,21 @@
 """ rate server module """
 
-from typing import Optional
+from typing import Optional, Any
 from multiprocessing.sharedctypes import Synchronized
 import multiprocessing as mp
 import sys
 import socket
 import threading
+import re
+import requests
+
+CLIENT_COMMAND_PARTS = [
+    r"^(?P<name>[A-Z]*) ",
+    r"(?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2}) ",
+    r"(?P<symbol>[A-Z]{3})$"
+]
+
+CLIENT_COMMAND_REGEX = re.compile("".join(CLIENT_COMMAND_PARTS))
 
 # Add support for the following client command
 
@@ -49,13 +59,22 @@ class ClientConnectionThread(threading.Thread):
 
             while True:
 
-                message = self.conn.recv(2048).decode('UTF-8')
+                data = self.conn.recv(2048)
 
-                if not message:
+                if not data:
                     break
-            
-                print("recv: " + message)
-                self.conn.sendall(message.encode('UTF-8'))
+
+                client_command_str: str = data.decode("UTF-8")
+
+                client_command_match = CLIENT_COMMAND_REGEX.match(
+                    client_command_str
+                )
+
+                if not client_command_match:
+                    self.conn.sendall(b"Invalid Command Format")
+                else:
+                    self.process_client_command(
+                        client_command_match.groupdict())
         
         except ConnectionAbortedError:
             pass
@@ -63,7 +82,30 @@ class ClientConnectionThread(threading.Thread):
         finally:
 
             with self.client_count.get_lock():
-                self.client_count.value -= 1 
+                self.client_count.value -= 1
+
+    def process_client_command(self, client_command: dict[str, Any]) -> None:
+        """ process client command """
+
+        if client_command["name"] == "GET":
+            
+            rate_url = "".join([
+                "http://127.0.0.1:5050/api/",
+                client_command["date"],
+                "?base=USD&symbols=",
+                client_command["symbol"]
+            ])
+
+            response = requests.get(rate_url)
+            rate_data = response.json()
+
+            self.conn.sendall(
+                str(rate_data["rates"][client_command["symbol"]])
+                .encode("UTF-8")
+            )     
+
+        else:
+            self.conn.sendall(b"Invalid Command Name")
 
 
 
@@ -111,13 +153,18 @@ def command_start_server(
 
 
 def command_stop_server(
-    server_process: Optional[mp.Process]) -> Optional[mp.Process]:
+    server_process: Optional[mp.Process],
+    client_count: Synchronized) -> Optional[mp.Process]:
     """ command stop server """
 
     if not server_process or not server_process.is_alive():
         print("server is not running")
     else:
         server_process.terminate()
+
+        with client_count.get_lock():
+                client_count.value = 0
+
         print("server stopped")
 
     server_process = None
@@ -160,7 +207,7 @@ def main() -> None:
         # host: 127.0.0.1
         # port: 5050
         host = "127.0.0.1"
-        port = 5050
+        port = 5025
 
         while True:
 
@@ -170,7 +217,8 @@ def main() -> None:
                 server_process = command_start_server(
                     server_process, host, port, client_count)
             elif command == "stop":
-                server_process = command_stop_server(server_process)
+                server_process = command_stop_server(
+                    server_process, client_count)
             elif command == "status":
                 command_server_status(server_process)
             elif command == "count":

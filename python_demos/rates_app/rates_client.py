@@ -35,4 +35,4 @@ def main(host: str, port: int) -> None:
 
 if __name__ == "__main__":
     # read config then call main
-    main('127.0.0.1', 5050)
+    main('127.0.0.1', 5025)

@@ -22,10 +22,10 @@ URL: http://127.0.0.1:5050/api/2021-04-08?base=INR&symbols=USD,EUR
 {
     "date": "2021-04-08",
     "base": "INR",
-    "rates": [
-        { "USD": 70 },
-        { "EUR": 80 },
-    ]
+    "rates": {
+        "USD": 70,
+        "EUR": 80,
+    }
 }
 """
 
