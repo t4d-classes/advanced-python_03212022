@@ -7,7 +7,19 @@ import sys
 import socket
 import threading
 import re
+import json
 import requests
+import pyodbc
+
+docker_conn_options = [
+    "DRIVER={ODBC Driver 17 for SQL Server}",
+    "SERVER=localhost,1433",
+    "DATABASE=ratesapp",
+    "UID=sa",
+    "PWD=sqlDbp@ss!",
+]
+
+conn_string = ";".join(docker_conn_options)
 
 CLIENT_COMMAND_PARTS = [
     r"^(?P<name>[A-Z]*) ",
@@ -36,7 +48,11 @@ CLIENT_COMMAND_REGEX = re.compile("".join(CLIENT_COMMAND_PARTS))
 class ClientConnectionThread(threading.Thread):
     """ client connection thread """
 
-    def __init__(self, conn: socket.socket, client_count: Synchronized):
+    def __init__(
+        self,
+        conn: socket.socket,
+        client_count: Synchronized) -> None:
+
         threading.Thread.__init__(self)
         self.conn = conn
         self.client_count = client_count
@@ -45,10 +61,9 @@ class ClientConnectionThread(threading.Thread):
 
         try:
 
-            self.conn.sendall(b"Connected to the Rate Server!")
+            self.conn.sendall(b"Connected to the Rate Server")
 
             while True:
-
                 data = self.conn.recv(2048)
 
                 if not data:
@@ -65,59 +80,87 @@ class ClientConnectionThread(threading.Thread):
                 else:
                     self.process_client_command(
                         client_command_match.groupdict())
-        
+
         except ConnectionAbortedError:
             pass
+            # ...
 
         finally:
-
             with self.client_count.get_lock():
                 self.client_count.value -= 1
-
+    
     def process_client_command(self, client_command: dict[str, Any]) -> None:
         """ process client command """
 
         if client_command["name"] == "GET":
-            
-            rate_url = "".join([
-                "http://127.0.0.1:5050/api/",
-                client_command["date"],
-                "?base=USD&symbols=",
-                client_command["symbol"]
-            ])
 
-            response = requests.get(rate_url)
-            rate_data = response.json()
+            with pyodbc.connect(conn_string) as con:
 
-            self.conn.sendall(
-                str(rate_data["rates"][client_command["symbol"]])
-                .encode("UTF-8")
-            )     
+                closing_date = client_command["date"]
+                currency_symbol = client_command["symbol"]
+
+                rate_sql = "select exchangerate as exchange_rate from rates"
+                           "where closingdate = ? and currencysymbol = ?"
+
+                with con.cursor() as cur:
+
+                    cur.execute(rate_sql, (closing_date, currency_symbol))
+
+                    rate = cur.fetchone()
+
+                    if rate:
+                        self.conn.sendall(
+                            str(rate.exchange_rate).encode("UTF-8")
+                        )
+                        return
+
+                url = "".join([
+                    "http://localhost:5000/api/",
+                    client_command["date"],
+                    "?base=USD&symbols=",
+                    client_command["symbol"]
+                ])
+
+                response = requests.get(url)
+
+                # rate_data = json.loads(response.text)
+                rate_data = response.json()
+
+                exchange_rate = rate_data["rates"][client_command["symbol"]]
+
+                insert_rate_sql = " ".join([
+                    "insert into rates",
+                    "(closingdate, exchangerate, currencysymbol)"
+                    "values (?, ?, ?)"
+                ])
+
+                con.execute(insert_rate_sql,
+                    (closing_date, exchange_rate, currency_symbol))
+
+                self.conn.sendall(
+                    str(exchange_rate).encode("UTF-8")
+                )
 
         else:
             self.conn.sendall(b"Invalid Command Name")
 
 
 
-
 def rate_server(host: str, port: int, client_count: Synchronized) -> None:
     """rate server"""
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_server:
+    with socket.socket(
+        socket.AF_INET, socket.SOCK_STREAM) as socket_server:
         
-
         socket_server.bind( (host, port) )
         socket_server.listen()
 
-        print(f"server is listening on {host}:{port}")
-
         while True:
 
-            # blocking call waiting for a client to connect
             conn, _ = socket_server.accept()
 
             with client_count.get_lock():
-                client_count.value += 1   
+                client_count.value += 1
 
             client_con_thread = ClientConnectionThread(conn, client_count)
             client_con_thread.start()
@@ -125,8 +168,7 @@ def rate_server(host: str, port: int, client_count: Synchronized) -> None:
 
 def command_start_server(
     server_process: Optional[mp.Process],
-    host: str,
-    port: int,
+    host: str, port: int,
     client_count: Synchronized) -> mp.Process:
     """ command start server """
 
@@ -134,8 +176,7 @@ def command_start_server(
         print("server is already running")
     else:
         server_process = mp.Process(
-            target=rate_server,
-            args=(host,port,client_count))
+            target=rate_server, args=(host, port, client_count))
         server_process.start()
         print("server started")
 
@@ -143,24 +184,18 @@ def command_start_server(
 
 
 def command_stop_server(
-    server_process: Optional[mp.Process],
-    client_count: Synchronized) -> Optional[mp.Process]:
+    server_process: Optional[mp.Process]) -> Optional[mp.Process]:
     """ command stop server """
 
     if not server_process or not server_process.is_alive():
         print("server is not running")
     else:
         server_process.terminate()
-
-        with client_count.get_lock():
-                client_count.value = 0
-
         print("server stopped")
 
     server_process = None
 
     return server_process
-    
 
 def command_server_status(server_process: Optional[mp.Process]) -> None:
     """ output the status of the server """
@@ -171,11 +206,18 @@ def command_server_status(server_process: Optional[mp.Process]) -> None:
     else:
         print("server is stopped")
 
-
 def command_count(client_count: Synchronized) -> None:
     """ exit the rates server app """
 
     print(client_count.value)
+
+def command_clear_cache() -> None:
+    """ command clear cache """
+
+    with pyodbc.connect(conn_string) as con:
+        con.execute("delete from rates")
+
+    print("cache cleared")
 
 
 def command_exit(server_process: Optional[mp.Process]) -> None:
@@ -190,14 +232,11 @@ def main() -> None:
 
     try:
 
-        server_process: Optional[mp.Process] = None
         client_count: Synchronized = mp.Value('i', 0)
-
-        # define the host and port variables here
-        # host: 127.0.0.1
-        # port: 5050
+        server_process: Optional[mp.Process] = None
+        
         host = "127.0.0.1"
-        port = 5025
+        port = 5050
 
         while True:
 
@@ -207,12 +246,13 @@ def main() -> None:
                 server_process = command_start_server(
                     server_process, host, port, client_count)
             elif command == "stop":
-                server_process = command_stop_server(
-                    server_process, client_count)
-            elif command == "status":
-                command_server_status(server_process)
+                server_process = command_stop_server(server_process)
             elif command == "count":
                 command_count(client_count)
+            elif command == "clear":
+                command_clear_cache()
+            elif command == "status":
+                command_server_status(server_process)
             elif command == "exit":
                 command_exit(server_process)
                 break
