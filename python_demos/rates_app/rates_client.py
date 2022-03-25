@@ -1,6 +1,20 @@
 """ rate client module """
+from typing import Any
 import sys
 import socket
+import pathlib
+
+import yaml
+
+def read_config() -> Any:
+    """ read config """
+
+    with open(
+        pathlib.Path("rates_app", "config", "rates_config.yaml"),
+        encoding="UTF-8") as yaml_file:
+
+        return yaml.load(yaml_file, Loader=yaml.SafeLoader)
+
 
 def main(host: str, port: int) -> None:
     """ main """
@@ -35,4 +49,5 @@ def main(host: str, port: int) -> None:
 
 if __name__ == "__main__":
     # read config then call main
-    main('127.0.0.1', 5025)
+    config = read_config()
+    main(config['server']['host'], int(config['server']['port']))

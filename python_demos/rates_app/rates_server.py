@@ -9,15 +9,30 @@ import threading
 import sys
 import re
 import json
+import pathlib
+
 import requests
 import pyodbc
+import yaml
+
+
+def read_config() -> Any:
+    """ read config """
+
+    with open(
+        pathlib.Path("rates_app", "config", "rates_config.yaml"),
+        encoding="UTF-8") as yaml_file:
+
+        return yaml.load(yaml_file, Loader=yaml.SafeLoader)
+
+config = read_config()
 
 RATESAPP_CONN_OPTIONS = [
     "DRIVER={ODBC Driver 17 for SQL Server}",
-    "SERVER=localhost,1433",
-    "DATABASE=ratesapp",
-    "UID=sa",
-    "PWD=sqlDbp@ss!",
+    f"SERVER={config['database']['server']}",
+    f"DATABASE={config['database']['database']}",
+    f"UID={config['database']['username']}",
+    f"PWD={config['database']['password']}",
 ]
 
 RATESAPP_CONN_STRING = ";".join(RATESAPP_CONN_OPTIONS)
@@ -205,13 +220,17 @@ def command_start_server(server_process: Optional[mp.Process]) -> None:
         raise RateServerError("server process cannot be null")
 
 
-def command_stop_server(server_process: Optional[mp.Process]) -> None:
+def command_stop_server(
+    server_process: Optional[mp.Process],
+    client_count: Synchronized) -> None:
     """ command stop server """
 
     if not server_process or not server_process.is_alive():
         print("server is not running")
     else:
         server_process.terminate()
+        with client_count.get_lock():
+            client_count.value = 0
         print("server stopped")
 
 
@@ -245,18 +264,20 @@ def main() -> None:
 
         client_count: Synchronized = mp.Value('i', 0)
         server_process: Optional[mp.Process] = None
+        host = config['server']['host']
+        port = int(config['server']['port'])
 
         while True:
 
             command = input("> ")
 
             if command == "start":
-                server_process = mp.Process(target=rate_server,
-                                            args=("localhost", 5025,
-                                                  client_count))
+                server_process = mp.Process(
+                    target=rate_server,
+                    args=(host, port, client_count))
                 command_start_server(server_process)
             elif command == "stop":
-                command_stop_server(server_process)
+                command_stop_server(server_process, client_count)
                 server_process = None
             elif command == "status":
                 command_server_status(server_process)
