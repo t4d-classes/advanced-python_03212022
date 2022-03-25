@@ -1,14 +1,6 @@
 """Main Module"""
 
-from rates_server.some_pkg.some_mod import do_it
-
-
-def main() -> None:
-    """Main Function"""
-
-    do_it()
-    print("Welcome to Package rates_server")
-
+from rates_server.rates_server import main
 
 if __name__ == '__main__':
     main()

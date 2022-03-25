@@ -10,7 +10,7 @@ def read_config() -> Any:
     """ read config """
 
     with open(
-            pathlib.Path("rates_app", "config", "rates_config.yaml"),
+            pathlib.Path("config", "rates_config.yaml"),
             encoding="UTF-8") as yaml_file:
 
         return yaml.load(yaml_file, Loader=yaml.SafeLoader)

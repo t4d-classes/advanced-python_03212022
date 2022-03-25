@@ -3,6 +3,7 @@
 from unittest import TestSuite, TextTestRunner
 
 from tests.test_sample import TestSample
+from tests.tests_rates_shared import TestRatesShared
 
 
 def suite() -> TestSuite:
@@ -10,6 +11,7 @@ def suite() -> TestSuite:
 
     test_suite = TestSuite()
     test_suite.addTest(TestSample())
+    test_suite.addTest(TestRatesShared())
     return test_suite
 
 

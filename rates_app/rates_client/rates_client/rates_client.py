@@ -1,31 +1,23 @@
 """ rate client module """
-from typing import Any
+
 import sys
 import socket
-import pathlib
 
-import yaml
-
-
-def read_config() -> Any:
-    """ read config """
-
-    with open(
-            pathlib.Path("rates_app", "config", "rates_config.yaml"),
-            encoding="UTF-8") as yaml_file:
-
-        return yaml.load(yaml_file, Loader=yaml.SafeLoader)
+from rates_shared.rates_shared import read_config
 
 
-def main(host: str, port: int) -> None:
+def main() -> None:
     """ main """
+
+    config = read_config()
 
     try:
 
         with socket.socket(
                 socket.AF_INET, socket.SOCK_STREAM) as socket_client:
 
-            socket_client.connect((host, port))
+            socket_client.connect(
+                (config['server']['host'], int(config['server']['port'])))
 
             welcome_message = socket_client.recv(2048)
 
@@ -51,6 +43,4 @@ def main(host: str, port: int) -> None:
 
 
 if __name__ == "__main__":
-    # read config then call main
-    config = read_config()
-    main(config['server']['host'], int(config['server']['port']))
+    main()
