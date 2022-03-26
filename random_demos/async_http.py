@@ -25,22 +25,31 @@ def main_sync() -> None:
     
     for single_date in business_days(start_date, end_date):
         single_date_str = single_date.strftime("%Y-%m-%d")
-        url = f"https://api.ratesapi.io/api/{single_date_str}?base=USD&symbols=EUR,CAD"
+        url = f"http://127.0.0.1:5050/api/{single_date_str}?base=USD&symbols=EUR,CAD"
         rates.append(json.loads(requests.request("GET", url).text))
 
+
+async def get_rate(session, single_date):
+
+    single_date_str = single_date.strftime("%Y-%m-%d")        
+    url = f'http://127.0.0.1:5050/api/{single_date_str}?base=USD&symbols=EUR,CAD'
+
+    async with session.get(url) as resp:
+        return await resp.json()
+
+
 async def main_async() -> None:
+
+    global rates
 
     start_date = date(2019, 1, 1)
     end_date = date(2019, 2, 28)
 
     async with aiohttp.ClientSession() as session:
 
-        for single_date in business_days(start_date, end_date):
-            single_date_str = single_date.strftime("%Y-%m-%d")        
-            url = f'https://api.ratesapi.io/api/{single_date_str}?base=USD&symbols=EUR,CAD'
-            async with session.get(url) as resp:
-                rates.append(await resp.json())
-                # print(rates)
+        rates = await asyncio.gather(
+            *[ get_rate(session, single_date)
+              for single_date in business_days(start_date, end_date)])
 
 
 start_time = time.time()

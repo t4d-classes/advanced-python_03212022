@@ -3,6 +3,7 @@
 from typing import Any
 import math
 import pathlib
+import time
 from flask import Flask, Response, request, jsonify, abort
 
 from .rates_data import load_rates_from_history
@@ -33,6 +34,8 @@ URL: http://127.0.0.1:5050/api/2021-04-08?base=INR&symbols=USD,EUR
 @app.route("/api/<rate_date>")
 def rates_by_date(rate_date: str) -> Response:
     """ rates_by_date """
+
+    time.sleep(0.1)
 
     for rate in rates:
 

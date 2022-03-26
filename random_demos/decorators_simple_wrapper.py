@@ -1,7 +1,7 @@
 from typing import Any, Callable
 
 def wrapper(fn: Callable[..., Any]) -> Callable[..., Any]:
-    def inner(*args: tuple[Any], **kwargs: dict[str, Any]) -> Any:
+    def inner(*args: tuple[Any], **kwargs: dict[str, Any]) -> Any: # func_a
         print("start")
         return fn(*args, **kwargs) # do_it invoked
     return inner
